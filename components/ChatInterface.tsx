@@ -1,12 +1,18 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useChatHistory, ChatMessage } from "@/hooks/useChatHistory";
+import { useDatabaseChat, DatabaseMessage } from "@/hooks/useDatabaseChat";
 
 export default function ChatInterface() {
-  const { createNewSession, updateSession, sessions } = useChatHistory();
-  const [currentSessionId, setCurrentSessionId] = useState<string>("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { 
+    currentConversation, 
+    sendMessage, 
+    createConversation, 
+    fetchConversation,
+    setCurrentConversation 
+  } = useDatabaseChat();
+  
+  const [messages, setMessages] = useState<DatabaseMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -20,14 +26,39 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
+  // Load conversation from URL or create new one
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationId = urlParams.get('session');
+    
+    if (conversationId) {
+      fetchConversation(conversationId).then(conversation => {
+        if (conversation) {
+          setMessages(conversation.messages);
+          setCurrentConversation(conversation);
+        }
+      });
+    } else {
+      // Create new conversation
+      createConversation().then(conversation => {
+        if (conversation) {
+          setCurrentConversation(conversation);
+          setMessages([]);
+        }
+      });
+    }
+  }, [fetchConversation, createConversation, setCurrentConversation]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
+    const userMessage: DatabaseMessage = {
+      id: Date.now().toString(),
+      conversationId: currentConversation?.id || '',
       role: "user",
-      parts: input.trim(),
-      timestamp: new Date(),
+      content: input.trim(),
+      createdAt: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -35,39 +66,27 @@ export default function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: input.trim(),
-          history: messages.map(msg => ({
-            role: msg.role,
-            parts: msg.parts,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get response");
-      }
-
-      const data = await response.json();
+      const response = await sendMessage(input.trim(), currentConversation?.id);
       
-      const aiMessage: Message = {
-        role: "model",
-        parts: data.response,
-        timestamp: new Date(),
-      };
+      if (response) {
+        const aiMessage: DatabaseMessage = {
+          id: Date.now().toString() + 'ai',
+          conversationId: currentConversation?.id || '',
+          role: "assistant",
+          content: response.response,
+          createdAt: new Date(),
+        };
 
-      setMessages(prev => [...prev, aiMessage]);
+        setMessages(prev => [...prev, aiMessage]);
+      }
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage: Message = {
-        role: "model",
-        parts: "Sorry, I encountered an error. Please try again.",
-        timestamp: new Date(),
+      const errorMessage: DatabaseMessage = {
+        id: Date.now().toString() + 'error',
+        conversationId: currentConversation?.id || '',
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+        createdAt: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -82,39 +101,12 @@ export default function ChatInterface() {
     }
   };
 
-  // Initialize session on mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session');
-    
-    if (sessionId) {
-      const session = sessions.find(s => s.id === sessionId);
-      if (session) {
-        setCurrentSessionId(sessionId);
-        setMessages(session.messages);
-      } else {
-        // Session not found, create new one
-        const newSession = createNewSession();
-        setCurrentSessionId(newSession.id);
-      }
-    } else if (!currentSessionId) {
-      // No session in URL and no current session, create new one
-      const newSession = createNewSession();
-      setCurrentSessionId(newSession.id);
+  const clearChat = async () => {
+    const newConversation = await createConversation();
+    if (newConversation) {
+      setCurrentConversation(newConversation);
+      setMessages([]);
     }
-  }, [currentSessionId, createNewSession, sessions]);
-
-  // Update session when messages change (but only if we have a session and messages)
-  useEffect(() => {
-    if (currentSessionId && messages.length > 0) {
-      updateSession(currentSessionId, messages);
-    }
-  }, [messages.length, currentSessionId, updateSession]); // Only depend on messages.length, not the entire messages array
-
-  const clearChat = () => {
-    const newSession = createNewSession();
-    setCurrentSessionId(newSession.id);
-    setMessages([]);
   };
 
   const formatTime = (date: Date) => {
@@ -122,7 +114,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950">
+    <div className="flex flex-col h-screen bg-gray-950 w-full">
       {/* Header */}
       <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
         <div className="flex items-center justify-between">
@@ -154,7 +146,7 @@ export default function ChatInterface() {
               How can I help you today?
             </h2>
             <p className="text-gray-400 max-w-md mx-auto">
-              I'm Gemini, an AI assistant. Ask me anything - I can help with writing, 
+              I&apos;m Gemini, an AI assistant. Ask me anything - I can help with writing, 
               analysis, coding, and much more.
             </p>
           </div>
@@ -162,12 +154,12 @@ export default function ChatInterface() {
 
         {messages.map((message, index) => (
           <div
-            key={index}
+            key={message.id}
             className={`flex gap-4 ${
               message.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            {message.role === "model" && (
+            {message.role === "assistant" && (
               <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-gray-300 font-bold text-sm">G</span>
               </div>
@@ -180,13 +172,13 @@ export default function ChatInterface() {
                   : "bg-gray-800 text-gray-200"
               }`}
             >
-              <div className="whitespace-pre-wrap">{message.parts}</div>
+              <div className="whitespace-pre-wrap">{message.content}</div>
               <div
                 className={`text-xs mt-2 ${
                   message.role === "user" ? "text-gray-300" : "text-gray-400"
                 }`}
               >
-                {formatTime(message.timestamp)}
+                {formatTime(message.createdAt)}
               </div>
             </div>
 

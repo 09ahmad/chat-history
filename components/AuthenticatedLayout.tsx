@@ -22,11 +22,9 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       <SidebarProvider>
         <AppSidebar />
         <SidebarTrigger />
-        <div className="min-h-screen">{children}</div>
+        <main className="flex-1 min-h-screen">{children}</main>
       </SidebarProvider>
     );
   }
-
-  // For unauthenticated users or landing/signin pages, don't show sidebar
-  return <div className="min-h-screen">{children}</div>;
+  return <div className="flex-1 min-h-screen">{children}</div>;
 } 

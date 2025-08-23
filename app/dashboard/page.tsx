@@ -1,15 +1,15 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
+import { useDatabaseChat } from "@/hooks/useDatabaseChat";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { conversations } = useDatabaseChat();
 
-  // Middleware will handle redirects for unauthenticated users
 
   if (status === "loading") {
     return (
@@ -49,13 +49,6 @@ export default function Dashboard() {
                   {session.user?.name || session.user?.email}
                 </span>
               </div>
-              <Button 
-                onClick={() => signOut({ callbackUrl: "/" })}
-                variant="outline"
-                className="text-red-600 border-red-200 hover:bg-red-50"
-              >
-                Sign Out
-              </Button>
             </div>
           </div>
         </div>
@@ -68,15 +61,15 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Total Conversations</span>
-                <span className="font-semibold">0</span>
+                <span className="font-semibold">{conversations.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Messages Today</span>
-                <span className="font-semibold">0</span>
+                <span className="text-gray-600">Total Messages</span>
+                <span className="font-semibold">{conversations.reduce((total, conv) => total + conv.messages.length, 0)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Storage Used</span>
-                <span className="font-semibold">0 MB</span>
+                <span className="text-gray-600">Latest Chat</span>
+                <span className="font-semibold">{conversations.length > 0 ? conversations[0].title.slice(0, 20) + '...' : 'None'}</span>
               </div>
             </div>
           </div>
@@ -84,15 +77,35 @@ export default function Dashboard() {
           {/* Recent Activity */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-2">
-                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+            {conversations.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500">No recent conversations</p>
+                <p className="text-sm text-gray-400">Start chatting to see your history here</p>
               </div>
-              <p className="text-gray-500">No recent conversations</p>
-              <p className="text-sm text-gray-400">Start chatting to see your history here</p>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                {conversations.slice(0, 3).map((conversation) => (
+                  <div key={conversation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-900">{conversation.title}</p>
+                      <p className="text-sm text-gray-500">{conversation.messages.length} messages</p>
+                    </div>
+                    <Button
+                      onClick={() => router.push(`/chat?session=${conversation.id}`)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -122,26 +135,6 @@ export default function Dashboard() {
                 Settings
               </Button>
             </div>
-          </div>
-        </div>
-
-        {/* Getting Started */}
-        <div className="mt-8 bg-gray-800 rounded-lg p-6 text-white">
-          <h3 className="text-xl font-semibold mb-2">Getting Started</h3>
-          <p className="text-gray-300 mb-4">
-            Welcome to ChatHistory! Start chatting with Gemini AI or explore the features below.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              onClick={() => router.push("/chat")}
-              variant="secondary" 
-              className="bg-gray-700 text-white hover:bg-gray-600 border-gray-600"
-            >
-              Start Chatting with Gemini
-            </Button>
-            <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-              View Tutorial
-            </Button>
           </div>
         </div>
       </div>

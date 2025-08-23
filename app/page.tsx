@@ -8,9 +8,7 @@ export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Middleware will handle redirects for authenticated users
 
-  // Show loading while checking authentication status
   if (status === "loading") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -22,11 +20,9 @@ export default function Home() {
     );
   }
 
-  // Show landing page for unauthenticated users
   if (status === "unauthenticated") {
     return <Landing />;
   }
 
-  // This should not be reached, but just in case
   return null;
 }

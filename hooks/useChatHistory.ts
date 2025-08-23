@@ -24,11 +24,11 @@ export function useChatHistory() {
       try {
         const parsed = JSON.parse(savedSessions);
         // Convert string dates back to Date objects
-        const sessionsWithDates = parsed.map((session: any) => ({
+        const sessionsWithDates = parsed.map((session) => ({
           ...session,
           createdAt: new Date(session.createdAt),
           updatedAt: new Date(session.updatedAt),
-          messages: session.messages.map((msg: any) => ({
+          messages: session.messages.map((msg) => ({
             ...msg,
             timestamp: new Date(msg.timestamp),
           })),
