@@ -1,29 +1,12 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { useChatHistory, ChatMessage } from "@/hooks/useChatHistory";
 
 export default function ChatInterface() {
-  const { data: session } = useSession();
-  const router = useRouter();
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { createNewSession, updateSession, sessions } = useChatHistory();
+  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,38 +20,14 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
-  // Load conversation from URL parameter
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const conversationId = urlParams.get('session');
-    
-    if (conversationId) {
-      loadConversation(conversationId);
-    }
-  }, []);
-
-  const loadConversation = async (conversationId: string) => {
-    try {
-      const response = await fetch(`/api/conversations/${conversationId}`);
-      if (response.ok) {
-        const conversation: Conversation = await response.json();
-        setCurrentConversationId(conversation.id);
-        setMessages(conversation.messages);
-      }
-    } catch (error) {
-      console.error("Error loading conversation:", error);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
       role: "user",
-      content: input.trim(),
-      createdAt: new Date().toISOString(),
+      parts: input.trim(),
+      timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -83,7 +42,10 @@ export default function ChatInterface() {
         },
         body: JSON.stringify({
           message: input.trim(),
-          conversationId: currentConversationId,
+          history: messages.map(msg => ({
+            role: msg.role,
+            parts: msg.parts,
+          })),
         }),
       });
 
@@ -94,29 +56,18 @@ export default function ChatInterface() {
       const data = await response.json();
       
       const aiMessage: Message = {
-        id: data.messageId,
-        role: "assistant",
-        content: data.response,
-        createdAt: new Date().toISOString(),
+        role: "model",
+        parts: data.response,
+        timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, aiMessage]);
-      
-      // Update conversation ID if this is a new conversation
-      if (!currentConversationId) {
-        setCurrentConversationId(data.conversationId);
-        // Update URL without reloading
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('session', data.conversationId);
-        window.history.pushState({}, '', newUrl.toString());
-      }
     } catch (error) {
       console.error("Chat error:", error);
       const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
-        createdAt: new Date().toISOString(),
+        role: "model",
+        parts: "Sorry, I encountered an error. Please try again.",
+        timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -131,17 +82,42 @@ export default function ChatInterface() {
     }
   };
 
+  // Initialize session on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    
+    if (sessionId) {
+      const session = sessions.find(s => s.id === sessionId);
+      if (session) {
+        setCurrentSessionId(sessionId);
+        setMessages(session.messages);
+      } else {
+        // Session not found, create new one
+        const newSession = createNewSession();
+        setCurrentSessionId(newSession.id);
+      }
+    } else if (!currentSessionId) {
+      // No session in URL and no current session, create new one
+      const newSession = createNewSession();
+      setCurrentSessionId(newSession.id);
+    }
+  }, [currentSessionId, createNewSession, sessions]);
+
+  // Update session when messages change (but only if we have a session and messages)
+  useEffect(() => {
+    if (currentSessionId && messages.length > 0) {
+      updateSession(currentSessionId, messages);
+    }
+  }, [messages.length, currentSessionId, updateSession]); // Only depend on messages.length, not the entire messages array
+
   const clearChat = () => {
-    setCurrentConversationId(null);
+    const newSession = createNewSession();
+    setCurrentSessionId(newSession.id);
     setMessages([]);
-    // Clear URL parameter
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.delete('session');
-    window.history.pushState({}, '', newUrl.toString());
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
@@ -184,14 +160,14 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <div
-            key={message.id}
+            key={index}
             className={`flex gap-4 ${
               message.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            {message.role === "assistant" && (
+            {message.role === "model" && (
               <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-gray-300 font-bold text-sm">G</span>
               </div>
@@ -204,13 +180,13 @@ export default function ChatInterface() {
                   : "bg-gray-800 text-gray-200"
               }`}
             >
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div className="whitespace-pre-wrap">{message.parts}</div>
               <div
                 className={`text-xs mt-2 ${
                   message.role === "user" ? "text-gray-300" : "text-gray-400"
                 }`}
               >
-                {formatTime(message.createdAt)}
+                {formatTime(message.timestamp)}
               </div>
             </div>
 

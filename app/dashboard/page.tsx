@@ -1,52 +1,13 @@
 "use client";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
-interface Message {
-  id: string;
-  role: string;
-  content: string;
-  createdAt: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: string;
-  updatedAt: string;
-  _count: {
-    messages: number;
-  };
-}
+import { signOut } from "next-auth/react";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchConversations();
-    }
-  }, [status]);
-
-  const fetchConversations = async () => {
-    try {
-      const response = await fetch('/api/conversations');
-      if (response.ok) {
-        const data = await response.json();
-        setConversations(data);
-      }
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Middleware will handle redirects for unauthenticated users
 
@@ -65,10 +26,6 @@ export default function Dashboard() {
     return null;
   }
 
-  const totalConversations = conversations.length;
-  const totalMessages = conversations.reduce((sum, conv) => sum + conv._count.messages, 0);
-  const recentConversations = conversations.slice(0, 3);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -83,13 +40,11 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                {session.user?.image && (
-                  <img 
-                    src={session.user.image} 
-                    alt="Profile" 
-                    className="w-10 h-10 rounded-full"
-                  />
+                <div className="flex justify-center items-center bg-gray-200 font-bold w-10 rounded-2xl ">
+                {session.user?.name && (
+                  <div>{session.user?.name.charAt(0).toUpperCase()}</div>
                 )}
+                </div>
                 <span className="font-medium text-gray-900">
                   {session.user?.name || session.user?.email}
                 </span>
@@ -113,15 +68,15 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Total Conversations</span>
-                <span className="font-semibold">{loading ? "..." : totalConversations}</span>
+                <span className="font-semibold">0</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Messages</span>
-                <span className="font-semibold">{loading ? "..." : totalMessages}</span>
+                <span className="text-gray-600">Messages Today</span>
+                <span className="font-semibold">0</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Storage Used</span>
-                <span className="font-semibold">~{loading ? "..." : Math.round(totalMessages * 0.1)} KB</span>
+                <span className="font-semibold">0 MB</span>
               </div>
             </div>
           </div>
@@ -129,44 +84,15 @@ export default function Dashboard() {
           {/* Recent Activity */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-4"></div>
-                <p className="text-gray-500">Loading...</p>
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
               </div>
-            ) : recentConversations.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400 mb-2">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <p className="text-gray-500">No recent conversations</p>
-                <p className="text-sm text-gray-400">Start chatting to see your history here</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentConversations.map((conversation) => (
-                  <div key={conversation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm truncate">
-                        {conversation.title}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {conversation._count.messages} messages
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => router.push(`/chat?session=${conversation.id}`)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+              <p className="text-gray-500">No recent conversations</p>
+              <p className="text-sm text-gray-400">Start chatting to see your history here</p>
+            </div>
           </div>
 
           {/* Quick Actions */}
@@ -182,15 +108,11 @@ export default function Dashboard() {
                 </svg>
                 Start Chat with Gemini
               </Button>
-              <Button 
-                onClick={() => router.push("/conversations")}
-                className="w-full justify-start" 
-                variant="outline"
-              >
+              <Button className="w-full justify-start" variant="outline">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                View All Conversations
+                Search History
               </Button>
               <Button className="w-full justify-start" variant="outline">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
