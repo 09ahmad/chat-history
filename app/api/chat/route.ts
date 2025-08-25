@@ -91,7 +91,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Update conversation title if it's the first message
     if (conversation.title === "New Conversation") {
       await client.conversation.update({
         where: { id: conversation.id },
