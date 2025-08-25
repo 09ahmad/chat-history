@@ -30,10 +30,12 @@ export function useDatabaseChat() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/history/history/${encodeURIComponent(session.user.email)}`);
+      const response = await fetch('/api/history');
       if (response.ok) {
         const data = await response.json();
         setConversations(data);
+      } else {
+        console.error('Failed to fetch conversations:', response.status);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -54,6 +56,8 @@ export function useDatabaseChat() {
           setCurrentConversation(updatedConversation);
           return updatedConversation;
         }
+      } else {
+        console.error('Failed to fetch conversation messages:', response.status);
       }
     } catch (error) {
       console.error('Error fetching conversation:', error);
@@ -79,6 +83,8 @@ export function useDatabaseChat() {
         const newConversation = await response.json();
         setConversations(prev => [newConversation, ...prev]);
         return newConversation;
+      } else {
+        console.error('Failed to create conversation:', response.status);
       }
     } catch (error) {
       console.error('Error creating conversation:', error);
@@ -99,6 +105,8 @@ export function useDatabaseChat() {
           setCurrentConversation(null);
         }
         return true;
+      } else {
+        console.error('Failed to delete conversation:', response.status);
       }
     } catch (error) {
       console.error('Error deleting conversation:', error);
@@ -127,18 +135,18 @@ export function useDatabaseChat() {
       if (response.ok) {
         const data = await response.json();
         
-        // Update conversations list if this is a new conversation
-        if (data.conversationId && !conversations.find(c => c.id === data.conversationId)) {
-          await fetchConversations();
-        }
+        // Refresh conversations list to get updated data
+        await fetchConversations();
 
         return data;
+      } else {
+        console.error('Failed to send message:', response.status);
       }
     } catch (error) {
       console.error('Error sending message:', error);
     }
     return null;
-  }, [session?.user?.email, currentConversation?.messages, conversations, fetchConversations]);
+  }, [session?.user?.email, currentConversation?.messages, fetchConversations]);
 
   // Load conversations on mount
   useEffect(() => {

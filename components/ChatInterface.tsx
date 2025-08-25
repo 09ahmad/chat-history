@@ -9,7 +9,8 @@ export default function ChatInterface() {
     sendMessage, 
     createConversation, 
     fetchConversation,
-    setCurrentConversation 
+    setCurrentConversation,
+    conversations 
   } = useDatabaseChat();
   
   const [messages, setMessages] = useState<DatabaseMessage[]>([]);
@@ -31,6 +32,8 @@ export default function ChatInterface() {
     const urlParams = new URLSearchParams(window.location.search);
     const conversationId = urlParams.get('session');
     
+    console.log('Available conversations:', conversations.length);
+    
     if (conversationId) {
       fetchConversation(conversationId).then(conversation => {
         if (conversation) {
@@ -47,7 +50,7 @@ export default function ChatInterface() {
         }
       });
     }
-  }, [fetchConversation, createConversation, setCurrentConversation]);
+  }, [fetchConversation, createConversation, setCurrentConversation, conversations.length]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
