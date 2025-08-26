@@ -155,7 +155,7 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {messages.map((message, index) => (
+        {messages.map((message, _) => (
           <div
             key={message.id}
             className={`flex gap-4 ${

@@ -1,12 +1,13 @@
 import { client } from "@/db/src";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+interface Context {
+  params: { id: string };
+}
+
+export async function DELETE(  request: NextRequest,{params}: Context) {
   try {
-    const { id } =await params;
+    const { id } =params;
 
     if (!id) {
       return NextResponse.json(
@@ -15,7 +16,6 @@ export async function DELETE(
       );
     }
 
-    // Check if the conversation exists
     const conversation = await client.conversation.findUnique({
       where: { id },
     });
@@ -27,12 +27,10 @@ export async function DELETE(
       );
     }
 
-    // Delete associated messages first (because of FK constraints)
     await client.messages.deleteMany({
       where: { conversationId: id },
     });
 
-    // Delete the conversation
     await client.conversation.delete({
       where: { id },
     });
