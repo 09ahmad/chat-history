@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save user message to database
-    const userMessage = await client.messages.create({
+    const _userMessage = await client.messages.create({
       data: {
         conversationId: conversation.id,
         role: "user",
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const text = response.text();
 
     // Save AI response to database
-    const aiMessage = await client.messages.create({
+    const _aiMessage = await client.messages.create({
       data: {
         conversationId: conversation.id,
         role: "assistant",

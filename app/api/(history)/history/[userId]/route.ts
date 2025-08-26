@@ -3,7 +3,7 @@ import { client } from "@/db/src/index";
 import { NextResponse } from "next/server";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: { userId: string } }
 ) {
   try {
