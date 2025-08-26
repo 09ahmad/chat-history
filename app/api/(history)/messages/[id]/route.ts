@@ -1,10 +1,14 @@
 import { client } from "@/db/src/index";
 import { NextRequest, NextResponse } from "next/server";
 
+interface ParamsType{
+  params: Promise<{ id: string }> 
+}
+
 // POST: Add a message to the conversation
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }>}
+  { params }: ParamsType
 ) {
   const conversationId = (await params).id;
   const { role, content } = await request.json();

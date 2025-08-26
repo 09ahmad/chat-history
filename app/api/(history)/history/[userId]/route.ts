@@ -1,9 +1,13 @@
 import { client } from "@/db/src/index";
 import { NextResponse } from "next/server";
 
+interface ParamsType{
+  params: Promise<{ userId: string }> 
+}
+
 export async function GET(
   _: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: ParamsType
 ) {
   try {
     const { userId } = await params;
