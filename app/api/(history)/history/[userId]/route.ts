@@ -1,13 +1,12 @@
-import { Request } from "express";
 import { client } from "@/db/src/index";
 import { NextResponse } from "next/server";
 
 export async function GET(
-  _request: Request,
-  { params }: { params: { userId: string } }
+  _: Request,
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
     if (!userId) {
       return NextResponse.json(
         { error: "Missing required field" },

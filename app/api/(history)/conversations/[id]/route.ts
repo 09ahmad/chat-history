@@ -1,13 +1,12 @@
 import { client } from "@/db/src";
 import { NextRequest, NextResponse } from "next/server";
 
-interface Context {
-  params: { id: string };
-}
-
-export async function DELETE(  request: NextRequest,{params}: Context) {
+export async function DELETE(
+  _: NextRequest,
+   { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } =params;
+    const { id } =await params;
 
     if (!id) {
       return NextResponse.json(

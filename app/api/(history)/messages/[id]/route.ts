@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 // POST: Add a message to the conversation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }>}
 ) {
-  const conversationId = params.id;
+  const conversationId = (await params).id;
   const { role, content } = await request.json();
 
   if (!conversationId || !role || !content) {
@@ -40,9 +40,9 @@ export async function POST(
 // GET: Get all messages for the conversation
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params:Promise<{ id: string }> }
 ) {
-  const conversationId = params.id;
+  const conversationId = (await params).id;
 
   const messages = await client.messages.findMany({
     where: {
@@ -59,9 +59,9 @@ export async function GET(
 // DELETE: Delete all messages for the conversation
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }>}
 ) {
-  const conversationId = params.id;
+  const conversationId = (await params).id;
 
   const deletedMessages = await client.messages.deleteMany({
     where: {
