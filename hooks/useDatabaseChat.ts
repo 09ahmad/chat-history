@@ -67,14 +67,15 @@ export function useDatabaseChat() {
 
   // Create a new conversation
   const createConversation = useCallback(async (title?: string) => {
-    if (!session?.user?.email) return null;
+    const userId = (session as { user?: { id?: string } } | null)?.user?.id;
+    if (!userId) return null;
 
     try {
-      const response = await fetch('/api/history/conversation', {
+      const response = await fetch('/api/conversation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: session.user.email,
+          userId,
           title: title || 'New Conversation'
         })
       });
@@ -90,7 +91,7 @@ export function useDatabaseChat() {
       console.error('Error creating conversation:', error);
     }
     return null;
-  }, [session?.user?.email]);
+  }, [session]);
 
   // Delete a conversation
   const deleteConversation = useCallback(async (conversationId: string) => {

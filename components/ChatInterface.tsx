@@ -131,7 +131,7 @@ export default function ChatInterface() {
             onClick={clearChat}
             variant="outline"
             size="sm"
-            className="text-gray-300 border-gray-600 hover:bg-gray-700"
+            className="text-gray-600 border-gray-600 hover:bg-gray-700"
           >
             Clear Chat
           </Button>

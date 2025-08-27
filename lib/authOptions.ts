@@ -1,4 +1,4 @@
-import { client } from "@/db/src/index";
+import prisma from "@/db/src/prisma"
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 export const authOptions = {
@@ -28,11 +28,11 @@ export const authOptions = {
     },
     async signIn({ user }) {
       if (!user.email) return false;
-      const existingUser = await client.user.findUnique({
+      const existingUser = await prisma.user.findUnique({
         where: { email: user.email },
       });
       if (!existingUser) {
-        await client.user.create({
+        await prisma.user.create({
           data: {
             email: user.email,
             name: user.name || "",
@@ -42,17 +42,19 @@ export const authOptions = {
       return true;
     },
     async jwt({ token, user }) {
-      if (user) {
-        const dbUser = await client.user.findUnique({
+      if (user?.email) {
+        const dbUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
-        user.token = dbUser?.id;
+        if (dbUser) {
+          (token).id = dbUser.id;
+        }
       }
       return token;
     },
     async session({ session, token }) {
-      if (token.id) {
-        session.user.id = token.id as string;
+      if (session?.user && (token)?.id) {
+        (session.user).id = (token).id as string;
       }
       return session;
     },
