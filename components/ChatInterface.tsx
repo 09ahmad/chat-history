@@ -229,6 +229,8 @@ export default function ChatInterface() {
               style={{
                 minHeight: "48px",
                 maxHeight: "200px",
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
               }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
